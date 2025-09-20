@@ -148,7 +148,7 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick, onStepChange
                         audioRef.current = a;
                     }
                     // Iniciar desde el segundo 18
-                    audioRef.current.currentTime = 18;
+                    audioRef.current.currentTime = 15;
                     audioRef.current.play().catch(() => {});
                 } catch {}
                 onButtonClick(); // Notificar al componente padre
