@@ -23,6 +23,7 @@ interface DragState {
 
 interface YellowFlowersProps {
   startFlowerRain: boolean;
+  onRainComplete?: () => void; // notifica al finalizar
 }
 
 // Array de imágenes de flores disponibles
@@ -44,8 +45,9 @@ const getRandomFlowerImage = (): number => {
   return Math.floor(Math.random() * flowerImages.length);
 };
 
-const YellowFlowers: React.FC<YellowFlowersProps> = ({ startFlowerRain }) => {
+const YellowFlowers: React.FC<YellowFlowersProps> = ({ startFlowerRain, onRainComplete }) => {
   const [flowers, setFlowers] = useState<FlowerPosition[]>([]);
+  const [spawnedCount, setSpawnedCount] = useState(0);
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
     dragId: null,
@@ -169,22 +171,33 @@ const YellowFlowers: React.FC<YellowFlowersProps> = ({ startFlowerRain }) => {
       // Agregar todas las flores al estado
       setFlowers(newFlowers);
 
+      setSpawnedCount(0);
+
       // Mostrar cada flor con un delay aleatorio entre 0 y 6 segundos
       newFlowers.forEach((flower) => {
         const randomDelay = Math.random() * 6000; // 0-6 segundos
         
         setTimeout(() => {
-          setFlowers(prev => 
-            prev.map(f => 
-              f.id === flower.id 
-                ? { ...f, show: true }
-                : f
-            )
-          );
+          setFlowers(prev => {
+            const updated = prev.map(f => f.id === flower.id ? { ...f, show: true } : f);
+            return updated;
+          });
+          setSpawnedCount(prev => prev + 1);
         }, randomDelay);
       });
     }
   }, [startFlowerRain]);
+
+  // Notifica cuando todas las flores se han mostrado
+  useEffect(() => {
+    if (!startFlowerRain) return;
+    const total = flowers.length;
+    if (total > 0 && spawnedCount >= total) {
+      // pequeño delay para dejar ver el final
+      const t = setTimeout(() => onRainComplete?.(), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [spawnedCount, flowers.length, startFlowerRain, onRainComplete]);
 
   const renderFlower = (flower: FlowerPosition, index: number) => {
     const sizeMap = {
@@ -236,6 +249,25 @@ const YellowFlowers: React.FC<YellowFlowersProps> = ({ startFlowerRain }) => {
       style={{ pointerEvents: flowers.some(f => f.show) ? 'auto' : 'none' }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onClick={(e) => {
+        // Easter egg: click en fondo agrega una flor que brota
+        if ((e.target as HTMLElement).closest('img,button,div[role="flower"]')) return;
+        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const newFlower: FlowerPosition = {
+          id: Date.now(),
+          x,
+          y,
+          show: false,
+          size: getRandomSize(),
+          imageIndex: getRandomFlowerImage(),
+        };
+        setFlowers(prev => [...prev, newFlower]);
+        setTimeout(() => {
+          setFlowers(prev => prev.map(f => f.id === newFlower.id ? { ...f, show: true } : f));
+        }, 20);
+      }}
     >
       {flowers.map((flower, index) => renderFlower(flower, index))}
       

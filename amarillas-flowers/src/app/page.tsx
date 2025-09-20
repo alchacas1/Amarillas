@@ -3,11 +3,14 @@
 import YellowFlowers from "@/components/YellowFlowers";
 import ClickButtons from "@/components/ClickButtons";
 import PlantGrowthAnimation from "@/components/PlantGrowthAnimation";
-import { useState } from "react";
+import FallingPetalsBackground from "@/components/FallingPetalsBackground";
+import { useEffect, useMemo, useState } from "react";
 
 export default function Home() {
   const [animationComplete, setAnimationComplete] = useState(false);
   const [startFlowerRain, setStartFlowerRain] = useState(false);
+  const [rainComplete, setRainComplete] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
 
   const handleAnimationComplete = () => {
     setAnimationComplete(true);
@@ -17,6 +20,19 @@ export default function Home() {
     setStartFlowerRain(true);
   };
 
+  const palette = useMemo(() => {
+    // Paleta de fondo dinámica basada en paso
+    const gradients = [
+      "from-[#fff8d6] to-[#ffeb99]",
+      "from-[#fff2cc] to-[#ffe082]",
+      "from-[#ffe8a3] to-[#ffd54f]",
+      "from-[#ffe082] to-[#ffca28]",
+      "from-[#ffd54f] to-[#ffb300]",
+      "from-[#ffca28] to-[#ffa000]",
+    ];
+    return gradients[Math.min(stepIndex, gradients.length - 1)];
+  }, [stepIndex]);
+
   const handleReset = () => {
     setAnimationComplete(false);
     setStartFlowerRain(false);
@@ -25,7 +41,7 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen">
+    <div className={`relative min-h-screen bg-gradient-to-b ${palette} transition-colors duration-700`}>
       {/* Animación inicial - siempre visible */}
       <PlantGrowthAnimation onAnimationComplete={handleAnimationComplete} />
 
@@ -47,10 +63,12 @@ export default function Home() {
           </button>
 
           {/* Yellow Flowers Animation Component */}
-          <YellowFlowers startFlowerRain={startFlowerRain} />
+          <YellowFlowers startFlowerRain={startFlowerRain} onRainComplete={() => setRainComplete(true)} />
 
           {/* Click Button Component */}
-          <ClickButtons onButtonClick={handleButtonClick} />
+          {!startFlowerRain && (
+            <ClickButtons onButtonClick={handleButtonClick} onStepChange={setStepIndex} />
+          )}
 
           {/* Instructions - Only shown initially */}
           {!startFlowerRain && (
@@ -58,8 +76,33 @@ export default function Home() {
 
             </div>
           )}
+          {/* Final épico */}
+          {rainComplete && (
+            <>
+              <FallingPetalsBackground />
+              <div className="fixed inset-0 z-30 flex items-end justify-center pb-20 pointer-events-none">
+                <TypewriterMessage />
+              </div>
+            </>
+          )}
         </>
       )}
+    </div>
+  );
+}
+
+// Mensaje con animación de máquina de escribir
+function TypewriterMessage() {
+  const text = "Espero que estas flores iluminen tu día 🌼💛";
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setShown((s) => Math.min(text.length, s + 1)), 45);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div className="bg-white/70 text-yellow-900 border border-yellow-400 rounded-xl px-6 py-4 shadow-lg backdrop-blur-sm font-semibold text-lg sm:text-2xl">
+      <span>{text.slice(0, shown)}</span>
+      <span className="inline-block w-2 bg-yellow-800 ml-1 animate-pulse" />
     </div>
   );
 }

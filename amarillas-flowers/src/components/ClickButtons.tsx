@@ -1,16 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 
 interface ClickButtonsProps {
     onButtonClick: () => void;
+    onStepChange?: (index: number) => void; // para paleta dinámica
 }
 
 interface FlowerParticle {
     id: number;
-    x: number;
-    y: number;
+    x: number; // porcentaje 0-100
+    y: number; // porcentaje 0-100
     vx: number;
     vy: number;
     rotation: number;
@@ -18,12 +19,24 @@ interface FlowerParticle {
     opacity: number;
 }
 
-const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick }) => {
+interface GlitterParticle {
+    id: number;
+    x: number; // porcentaje
+    y: number; // porcentaje
+    vx: number;
+    vy: number;
+    size: number; // px
+    opacity: number;
+}
+
+const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick, onStepChange }) => {
     const [currentButtonIndex, setCurrentButtonIndex] = useState(0);
     const [showButton, setShowButton] = useState(false);
     const [buttonPosition, setButtonPosition] = useState({ x: 50, y: 50 });
     const [flowers, setFlowers] = useState<FlowerParticle[]>([]);
+    const [glitters, setGlitters] = useState<GlitterParticle[]>([]);
     const [sequenceComplete, setSequenceComplete] = useState(false);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
 
     // Array de textos para los botones
     const buttonTexts = [
@@ -47,10 +60,11 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick }) => {
 
     // Función para generar posición aleatoria
     const getRandomPosition = () => {
-        const padding = 20; // Porcentaje de padding desde los bordes
+        const min = 20; // mínimo 20%
+        const max = 80; // máximo 80%
         return {
-            x: Math.random() * (80 - padding) + padding, // Entre 20% y 80%
-            y: Math.random() * (80 - padding) + padding  // Entre 20% y 80%
+            x: Math.random() * (max - min) + min,
+            y: Math.random() * (max - min) + min,
         };
     };
 
@@ -78,11 +92,35 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick }) => {
         return particles;
     };
 
+    // Partículas brillantes tipo "polvo de hadas"
+    const createGlitterParticles = (x: number, y: number) => {
+        const arr: GlitterParticle[] = [];
+        const count = 18;
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 1.5 + 0.5;
+            arr.push({
+                id: Date.now() + 1000 + i,
+                x,
+                y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: Math.random() * 4 + 2,
+                opacity: 1,
+            });
+        }
+        return arr;
+    };
+
     // Función para manejar click del botón
     const handleButtonClick = () => {
         // Crear animación de flores desde la posición del botón
         const newFlowers = createFlowerParticles(buttonPosition.x, buttonPosition.y);
+        const newGlitters = createGlitterParticles(buttonPosition.x, buttonPosition.y);
         setFlowers(prev => [...prev, ...newFlowers]);
+        setGlitters(prev => [...prev, ...newGlitters]);
+
+        // No reproducir música aún; solo al último botón
 
         // Ocultar el botón actual
         setShowButton(false);
@@ -90,7 +128,11 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick }) => {
         // Avanzar al siguiente botón o completar secuencia
         if (currentButtonIndex < buttonTexts.length - 1) {
             setTimeout(() => {
-                setCurrentButtonIndex(prev => prev + 1);
+                setCurrentButtonIndex(prev => {
+                    const next = prev + 1;
+                    onStepChange?.(next);
+                    return next;
+                });
                 setButtonPosition(getRandomPosition());
                 setShowButton(true);
             }, 800); // Esperar un poco antes de mostrar el siguiente botón
@@ -98,6 +140,17 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick }) => {
             // Secuencia completada
             setTimeout(() => {
                 setSequenceComplete(true);
+                // Reproducir música una única vez al finalizar la secuencia
+                try {
+                    if (!audioRef.current) {
+                        const a = new Audio('/flores.mp3');
+                        a.volume = 0.25;
+                        audioRef.current = a;
+                    }
+                    // Iniciar desde el segundo 18
+                    audioRef.current.currentTime = 18;
+                    audioRef.current.play().catch(() => {});
+                } catch {}
                 onButtonClick(); // Notificar al componente padre
             }, 1500); // Esperar a que termine la animación de flores
         }
@@ -105,33 +158,46 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick }) => {
 
     // Animar las partículas de flores
     useEffect(() => {
-        if (flowers.length === 0) return;
+        if (flowers.length === 0 && glitters.length === 0) return;
 
-        const animationFrame = requestAnimationFrame(() => {
-            setFlowers(prev => 
-                prev.map(flower => ({
+        const raf = requestAnimationFrame(() => {
+            setFlowers(prev => prev
+                .map(flower => ({
                     ...flower,
                     x: flower.x + flower.vx,
                     y: flower.y + flower.vy,
-                    vy: flower.vy + 0.1, // Gravedad
+                    vy: flower.vy + 0.12, // Gravedad leve
                     rotation: flower.rotation + 5,
                     opacity: Math.max(0, flower.opacity - 0.02)
-                })).filter(flower => flower.opacity > 0 && flower.y < 110) // Remover flores que salen de pantalla
+                }))
+                .filter(flower => flower.opacity > 0 && flower.y < 120)
+            );
+
+            setGlitters(prev => prev
+                .map(g => ({
+                    ...g,
+                    x: g.x + g.vx,
+                    y: g.y + g.vy,
+                    vy: g.vy + 0.05,
+                    opacity: Math.max(0, g.opacity - 0.04),
+                }))
+                .filter(g => g.opacity > 0 && g.y < 120)
             );
         });
 
-        return () => cancelAnimationFrame(animationFrame);
-    }, [flowers]);
+        return () => cancelAnimationFrame(raf);
+    }, [flowers, glitters]);
 
     // Inicializar la secuencia después de 1 segundo
     useEffect(() => {
         const timer = setTimeout(() => {
             setButtonPosition(getRandomPosition());
             setShowButton(true);
+            onStepChange?.(0);
         }, 1000);
 
         return () => clearTimeout(timer);
-    }, []);
+    }, [onStepChange]);
 
     // Si la secuencia está completa, no renderizar nada
     if (sequenceComplete) {
@@ -182,6 +248,22 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick }) => {
                         className="object-contain"
                     />
                 </div>
+            ))}
+
+            {/* Partículas brillantes */}
+            {glitters.map(g => (
+                <div
+                    key={g.id}
+                    className="absolute pointer-events-none rounded-full bg-yellow-300 shadow-[0_0_6px_rgba(255,215,0,0.8)]"
+                    style={{
+                        left: `${g.x}%`,
+                        top: `${g.y}%`,
+                        width: `${g.size}px`,
+                        height: `${g.size}px`,
+                        transform: 'translate(-50%, -50%)',
+                        opacity: g.opacity,
+                    }}
+                />
             ))}
         </div>
     );
