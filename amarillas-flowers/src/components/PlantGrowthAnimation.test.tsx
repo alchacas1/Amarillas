@@ -57,4 +57,18 @@ describe("PlantGrowthAnimation", () => {
 
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
+
+  it("announces the natural bloom before the flower is fully open", () => {
+    render(<PlantGrowthAnimation onAnimationComplete={() => undefined} />);
+
+    act(() => vi.advanceTimersByTime(5000));
+    expect(
+      screen.getByRole("img", { name: /flor amarilla abriéndose/i }),
+    ).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(1500));
+    expect(
+      screen.getByRole("img", { name: /flor amarilla abierta/i }),
+    ).toBeInTheDocument();
+  });
 });

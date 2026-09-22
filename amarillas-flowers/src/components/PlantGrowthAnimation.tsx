@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 
 interface PlantGrowthAnimationProps {
     onAnimationComplete: () => void;
@@ -23,6 +24,15 @@ interface Sparkle {
     delay: number;
     duration: number;
 }
+
+type PetalStyle = CSSProperties & {
+    '--petal-angle': string;
+    '--petal-delay': string;
+    '--petal-scale': number;
+};
+
+const outerPetalScales = [1, 0.94, 1.04, 0.97, 1.02, 0.95, 1.03, 0.96, 1.05, 0.98];
+const innerPetalScales = [0.95, 1.03, 0.97, 1.05, 0.96, 1.01, 0.94, 1.02];
 
 const createSeededRandom = (initialSeed: number) => {
     let seed = initialSeed >>> 0;
@@ -162,35 +172,48 @@ const PlantGrowthAnimation: React.FC<PlantGrowthAnimationProps> = ({ onAnimation
 
                 {/* Flower */}
                 {stage >= 5 && (
-                    <div className="absolute bottom-44 left-1/2 transform -translate-x-1/2 transition-all duration-1500 animate-bloom">
-                        {/* Flower petals */}
-                        <div className="relative w-16 h-16">
-                            {/* Center */}
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-yellow-400 rounded-full border-2 border-yellow-500 z-10"></div>
+                    <div
+                        role="img"
+                        aria-label={stage === 5 ? 'Flor amarilla abriéndose' : 'Flor amarilla abierta'}
+                        className={`natural-flower ${stage === 5 ? 'natural-flower--blooming' : 'natural-flower--open'}`}
+                    >
+                        <div className="natural-flower__head" aria-hidden="true">
+                            <div className="natural-flower__sepal natural-flower__sepal--left" />
+                            <div className="natural-flower__sepal natural-flower__sepal--right" />
 
-                            {/* Petals */}
-                            {[...Array(8)].map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="absolute top-1/2 left-1/2 w-8 h-8 bg-yellow-300 rounded-full transform -translate-x-1/2 -translate-y-1/2 animate-petal-bloom"
+                            {outerPetalScales.map((scale, index) => (
+                                <span
+                                    key={`outer-${index}`}
+                                    className="natural-petal-shell"
                                     style={{
-                                        transform: `translate(-50%, -50%) rotate(${i * 45}deg) translateY(-16px)`,
-                                        animationDelay: `${i * 0.1}s`
-                                    }}
-                                />
+                                        '--petal-angle': `${index * 36}deg`,
+                                        '--petal-delay': `${index * 55}ms`,
+                                        '--petal-scale': scale,
+                                    } as PetalStyle}
+                                >
+                                    <span className="natural-petal natural-petal--outer" />
+                                </span>
                             ))}
 
-                            {/* Secondary petals */}
-                            {[...Array(8)].map((_, i) => (
-                                <div
-                                    key={`secondary-${i}`}
-                                    className="absolute top-1/2 left-1/2 w-6 h-6 bg-yellow-200 rounded-full transform -translate-x-1/2 -translate-y-1/2 animate-petal-bloom"
+                            {innerPetalScales.map((scale, index) => (
+                                <span
+                                    key={`inner-${index}`}
+                                    className="natural-petal-shell"
                                     style={{
-                                        transform: `translate(-50%, -50%) rotate(${i * 45 + 22.5}deg) translateY(-12px)`,
-                                        animationDelay: `${i * 0.1 + 0.5}s`
-                                    }}
-                                />
+                                        '--petal-angle': `${index * 45 + 22.5}deg`,
+                                        '--petal-delay': `${220 + index * 42}ms`,
+                                        '--petal-scale': scale,
+                                    } as PetalStyle}
+                                >
+                                    <span className="natural-petal natural-petal--inner" />
+                                </span>
                             ))}
+
+                            <div className="natural-flower__center">
+                                {Array.from({ length: 9 }, (_, index) => (
+                                    <span key={index} />
+                                ))}
+                            </div>
                         </div>
 
                         {/* Magical sparkles around flower */}
