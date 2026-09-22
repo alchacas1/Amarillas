@@ -24,3 +24,100 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes grow-up {
+  from { height: 0; opacity: 0; }
+  to { height: 32px; opacity: 1; }
+}
+
+@keyframes grow-stem {
+  from { height: 32px; }
+  to { height: 120px; }
+}
+
+@keyframes grow-scale {
+  from { scale: 0; opacity: 0; }
+  to { scale: 1; opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(-5px) translateX(2px); }
+  50% { transform: translateY(-10px) translateX(0); }
+  75% { transform: translateY(-5px) translateX(-2px); }
+}
+
+.animate-grow-up { animation: grow-up 1s ease-out; }
+.animate-grow-stem { animation: grow-stem 1s ease-out; }
+.animate-grow-leaf { animation: grow-scale 0.8s ease-out; }
+.animate-grow-leaf-delayed { animation: grow-scale 0.8s ease-out 0.2s both; }
+.animate-grow-leaf-small { animation: grow-scale 0.8s ease-out 0.4s both; }
+.animate-grow-leaf-small-delayed { animation: grow-scale 0.8s ease-out 0.6s both; }
+.animate-grow-bud { animation: grow-scale 1s ease-out; }
+.animate-bloom { animation: grow-scale 1.5s ease-out; }
+.animate-petal-bloom { animation: grow-scale 0.8s ease-out both; }
+.animate-float { animation: float 4s ease-in-out infinite; }
+
+@keyframes petal-fall {
+  from {
+    transform: translate(-50%, -15vh) rotate(0deg);
+  }
+  to {
+    transform: translate(calc(-50% + var(--petal-drift)), 115vh) rotate(var(--petal-rotation));
+  }
+}
+
+.petal-fall {
+  top: 0;
+  animation-name: petal-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+@keyframes flower-burst {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.65);
+  }
+  to {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--particle-x)), calc(-50% + var(--particle-y))) rotate(var(--particle-rotation)) scale(1.15);
+  }
+}
+
+@keyframes glitter-burst {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--particle-x)), calc(-50% + var(--particle-y))) scale(0);
+  }
+}
+
+.flower-burst {
+  animation: flower-burst 900ms ease-out forwards;
+  will-change: opacity, transform;
+}
+
+.glitter-burst {
+  animation: glitter-burst 700ms ease-out forwards;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .petal-fall {
+    display: none;
+  }
+}

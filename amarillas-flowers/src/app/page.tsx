@@ -4,21 +4,43 @@ import YellowFlowers from "@/components/YellowFlowers";
 import ClickButtons from "@/components/ClickButtons";
 import PlantGrowthAnimation from "@/components/PlantGrowthAnimation";
 import FallingPetalsBackground from "@/components/FallingPetalsBackground";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export default function Home() {
   const [animationComplete, setAnimationComplete] = useState(false);
   const [startFlowerRain, setStartFlowerRain] = useState(false);
   const [rainComplete, setRainComplete] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const [musicBlocked, setMusicBlocked] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const handleAnimationComplete = () => {
+  const handleAnimationComplete = useCallback(() => {
     setAnimationComplete(true);
-  };
+  }, []);
 
-  const handleButtonClick = () => {
+  const handleButtonClick = useCallback(() => {
     setStartFlowerRain(true);
-  };
+  }, []);
+
+  const handleRainComplete = useCallback(() => {
+    setRainComplete(true);
+  }, []);
+
+  const handleMusicStart = useCallback(() => {
+    setMusicBlocked(false);
+
+    try {
+      if (!audioRef.current) {
+        audioRef.current = new Audio("/flores.mp3");
+        audioRef.current.volume = 0.25;
+      }
+
+      audioRef.current.currentTime = 15;
+      void audioRef.current.play().catch(() => setMusicBlocked(true));
+    } catch {
+      setMusicBlocked(true);
+    }
+  }, []);
 
   const palette = useMemo(() => {
     // Paleta de fondo dinámica basada en paso
@@ -42,8 +64,10 @@ export default function Home() {
 
   return (
     <div className={`relative min-h-screen bg-gradient-to-b ${palette} transition-colors duration-700`}>
-      {/* Animación inicial - siempre visible */}
-      <PlantGrowthAnimation onAnimationComplete={handleAnimationComplete} />
+      {/* La introducción se retira para revelar el jardín dinámico. */}
+      {!animationComplete && (
+        <PlantGrowthAnimation onAnimationComplete={handleAnimationComplete} />
+      )}
 
       {/* Contenido que aparece después de la animación */}
       {animationComplete && (
@@ -63,19 +87,27 @@ export default function Home() {
           </button>
 
           {/* Yellow Flowers Animation Component */}
-          <YellowFlowers startFlowerRain={startFlowerRain} onRainComplete={() => setRainComplete(true)} />
+          <YellowFlowers startFlowerRain={startFlowerRain} onRainComplete={handleRainComplete} />
 
           {/* Click Button Component */}
           {!startFlowerRain && (
-            <ClickButtons onButtonClick={handleButtonClick} onStepChange={setStepIndex} />
+            <ClickButtons
+              onButtonClick={handleButtonClick}
+              onMusicStart={handleMusicStart}
+              onStepChange={setStepIndex}
+            />
           )}
 
-          {/* Instructions - Only shown initially */}
-          {!startFlowerRain && (
-            <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-40">
-
-            </div>
+          {musicBlocked && (
+            <button
+              type="button"
+              onClick={handleMusicStart}
+              className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border-2 border-yellow-700 bg-yellow-300 px-5 py-3 font-semibold text-yellow-950 shadow-xl hover:bg-yellow-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-950"
+            >
+              Reproducir música
+            </button>
           )}
+
           {/* Final épico */}
           {rainComplete && (
             <>
@@ -91,18 +123,30 @@ export default function Home() {
   );
 }
 
+const FINAL_MESSAGE = "Espero que estas flores iluminen tu día 🌼💛";
+
 // Mensaje con animación de máquina de escribir
-function TypewriterMessage() {
-  const text = "Espero que estas flores iluminen tu día 🌼💛";
+export function TypewriterMessage() {
+  const characters = Array.from(FINAL_MESSAGE);
   const [shown, setShown] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setShown((s) => Math.min(text.length, s + 1)), 45);
-    return () => clearInterval(t);
-  }, []);
+    const timer = window.setInterval(() => {
+      setShown((current) => {
+        const next = Math.min(characters.length, current + 1);
+        if (next === characters.length) {
+          window.clearInterval(timer);
+        }
+        return next;
+      });
+    }, 45);
+
+    return () => window.clearInterval(timer);
+  }, [characters.length]);
   return (
     <div className="bg-white/70 text-yellow-900 border border-yellow-400 rounded-xl px-6 py-4 shadow-lg backdrop-blur-sm font-semibold text-lg sm:text-2xl">
-      <span>{text.slice(0, shown)}</span>
-      <span className="inline-block w-2 bg-yellow-800 ml-1 animate-pulse" />
+      <span role="status" className="sr-only">{FINAL_MESSAGE}</span>
+      <span aria-hidden="true">{characters.slice(0, shown).join("")}</span>
+      <span aria-hidden="true" className="inline-block h-[1em] w-2 bg-yellow-800 ml-1 animate-pulse" />
     </div>
   );
 }

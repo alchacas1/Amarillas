@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import Image from 'next/image';
 
 interface ClickButtonsProps {
     onButtonClick: () => void;
+    onMusicStart: () => void;
     onStepChange?: (index: number) => void; // para paleta dinámica
 }
 
@@ -16,7 +18,6 @@ interface FlowerParticle {
     vy: number;
     rotation: number;
     imageIndex: number;
-    opacity: number;
 }
 
 interface GlitterParticle {
@@ -26,17 +27,21 @@ interface GlitterParticle {
     vx: number;
     vy: number;
     size: number; // px
-    opacity: number;
 }
 
-const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick, onStepChange }) => {
+type ParticleStyle = CSSProperties & {
+    '--particle-x': string;
+    '--particle-y': string;
+    '--particle-rotation'?: string;
+};
+
+const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick, onMusicStart, onStepChange }) => {
     const [currentButtonIndex, setCurrentButtonIndex] = useState(0);
     const [showButton, setShowButton] = useState(false);
     const [buttonPosition, setButtonPosition] = useState({ x: 50, y: 50 });
     const [flowers, setFlowers] = useState<FlowerParticle[]>([]);
     const [glitters, setGlitters] = useState<GlitterParticle[]>([]);
     const [sequenceComplete, setSequenceComplete] = useState(false);
-    const audioRef = useRef<HTMLAudioElement | null>(null);
 
     // Array de textos para los botones
     const buttonTexts = [
@@ -84,8 +89,7 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick, onStepChange
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
                 rotation: Math.random() * 360,
-                imageIndex: Math.floor(Math.random() * flowerImages.length),
-                opacity: 1
+                imageIndex: Math.floor(Math.random() * flowerImages.length)
             });
         }
 
@@ -106,7 +110,6 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick, onStepChange
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
                 size: Math.random() * 4 + 2,
-                opacity: 1,
             });
         }
         return arr;
@@ -137,56 +140,15 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick, onStepChange
                 setShowButton(true);
             }, 800); // Esperar un poco antes de mostrar el siguiente botón
         } else {
+            // Debe ejecutarse dentro del click para conservar la activación del usuario en móviles.
+            onMusicStart();
             // Secuencia completada
             setTimeout(() => {
                 setSequenceComplete(true);
-                // Reproducir música una única vez al finalizar la secuencia
-                try {
-                    if (!audioRef.current) {
-                        const a = new Audio('/flores.mp3');
-                        a.volume = 0.25;
-                        audioRef.current = a;
-                    }
-                    // Iniciar desde el segundo 18
-                    audioRef.current.currentTime = 15;
-                    audioRef.current.play().catch(() => {});
-                } catch {}
                 onButtonClick(); // Notificar al componente padre
             }, 1500); // Esperar a que termine la animación de flores
         }
     };
-
-    // Animar las partículas de flores
-    useEffect(() => {
-        if (flowers.length === 0 && glitters.length === 0) return;
-
-        const raf = requestAnimationFrame(() => {
-            setFlowers(prev => prev
-                .map(flower => ({
-                    ...flower,
-                    x: flower.x + flower.vx,
-                    y: flower.y + flower.vy,
-                    vy: flower.vy + 0.12, // Gravedad leve
-                    rotation: flower.rotation + 5,
-                    opacity: Math.max(0, flower.opacity - 0.02)
-                }))
-                .filter(flower => flower.opacity > 0 && flower.y < 120)
-            );
-
-            setGlitters(prev => prev
-                .map(g => ({
-                    ...g,
-                    x: g.x + g.vx,
-                    y: g.y + g.vy,
-                    vy: g.vy + 0.05,
-                    opacity: Math.max(0, g.opacity - 0.04),
-                }))
-                .filter(g => g.opacity > 0 && g.y < 120)
-            );
-        });
-
-        return () => cancelAnimationFrame(raf);
-    }, [flowers, glitters]);
 
     // Inicializar la secuencia después de 1 segundo
     useEffect(() => {
@@ -215,11 +177,12 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick, onStepChange
                      shadow-xl hover:shadow-2xl transition-all duration-300
                      border-4 border-yellow-600 hover:border-yellow-700
                      animate-pulse hover:animate-none hover:scale-110
-                     whitespace-nowrap"
+                     whitespace-normal text-center"
                     style={{
-                        left: `${buttonPosition.x}%`,
+                        left: `clamp(7.5rem, ${buttonPosition.x}%, calc(100% - 7.5rem))`,
                         top: `${buttonPosition.y}%`,
-                        transform: 'translate(-50%, -50%)'
+                        transform: 'translate(-50%, -50%)',
+                        maxWidth: 'calc(100vw - 2rem)',
                     }}
                     onClick={handleButtonClick}
                 >
@@ -231,18 +194,19 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick, onStepChange
             {flowers.map(flower => (
                 <div
                     key={flower.id}
-                    className="absolute pointer-events-none"
+                    className="flower-burst absolute pointer-events-none"
                     style={{
                         left: `${flower.x}%`,
                         top: `${flower.y}%`,
-                        transform: `translate(-50%, -50%) rotate(${flower.rotation}deg)`,
-                        opacity: flower.opacity,
-                        transition: 'none'
-                    }}
+                        '--particle-x': `${flower.vx * 8}vw`,
+                        '--particle-y': `${flower.vy * 6 + 18}vh`,
+                        '--particle-rotation': `${flower.rotation + 360}deg`,
+                    } as ParticleStyle}
+                    onAnimationEnd={() => setFlowers((current) => current.filter((item) => item.id !== flower.id))}
                 >
                     <Image
                         src={flowerImages[flower.imageIndex]}
-                        alt="flower"
+                        alt=""
                         width={30}
                         height={30}
                         className="object-contain"
@@ -254,15 +218,16 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick, onStepChange
             {glitters.map(g => (
                 <div
                     key={g.id}
-                    className="absolute pointer-events-none rounded-full bg-yellow-300 shadow-[0_0_6px_rgba(255,215,0,0.8)]"
+                    className="glitter-burst absolute pointer-events-none rounded-full bg-yellow-300 shadow-[0_0_6px_rgba(255,215,0,0.8)]"
                     style={{
                         left: `${g.x}%`,
                         top: `${g.y}%`,
                         width: `${g.size}px`,
                         height: `${g.size}px`,
-                        transform: 'translate(-50%, -50%)',
-                        opacity: g.opacity,
-                    }}
+                        '--particle-x': `${g.vx * 6}vw`,
+                        '--particle-y': `${g.vy * 5 + 8}vh`,
+                    } as ParticleStyle}
+                    onAnimationEnd={() => setGlitters((current) => current.filter((item) => item.id !== g.id))}
                 />
             ))}
         </div>

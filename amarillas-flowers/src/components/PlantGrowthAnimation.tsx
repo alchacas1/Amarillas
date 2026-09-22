@@ -1,16 +1,86 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface PlantGrowthAnimationProps {
     onAnimationComplete: () => void;
 }
 
+interface Star {
+    id: number;
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    delay: number;
+    duration: number;
+}
+
+interface Sparkle {
+    id: number;
+    left: number;
+    top: number;
+    delay: number;
+    duration: number;
+}
+
+const createSeededRandom = (initialSeed: number) => {
+    let seed = initialSeed >>> 0;
+    return () => {
+        seed = (seed * 1664525 + 1013904223) >>> 0;
+        return seed / 4294967296;
+    };
+};
+
+const createStars = (): Star[] => {
+    const random = createSeededRandom(20250921);
+    return Array.from({ length: 50 }, (_, id) => ({
+        id,
+        left: random() * 100,
+        top: random() * 100,
+        width: random() * 3 + 1,
+        height: random() * 3 + 1,
+        delay: random() * 3,
+        duration: random() * 2 + 1,
+    }));
+};
+
+const createSparkles = (): Sparkle[] => {
+    const random = createSeededRandom(20250922);
+    return Array.from({ length: 12 }, (_, id) => ({
+        id,
+        left: random() * 100,
+        top: random() * 100,
+        delay: random() * 2,
+        duration: random() + 0.5,
+    }));
+};
+
 const PlantGrowthAnimation: React.FC<PlantGrowthAnimationProps> = ({ onAnimationComplete }) => {
     const [stage, setStage] = useState(0);
+    const [stars] = useState<Star[]>(createStars);
+    const [sparkles] = useState<Sparkle[]>(createSparkles);
+    const completionCallbackRef = useRef(onAnimationComplete);
+    const completedRef = useRef(false);
     // Stages: 0=soil, 1=sprout, 2=stem, 3=leaves, 4=bud, 5=flower, 6=complete
 
+    const finishAnimation = useCallback(() => {
+        if (completedRef.current) return;
+        completedRef.current = true;
+        setStage(6);
+        completionCallbackRef.current();
+    }, []);
+
     useEffect(() => {
+        completionCallbackRef.current = onAnimationComplete;
+    }, [onAnimationComplete]);
+
+    useEffect(() => {
+        if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+            finishAnimation();
+            return;
+        }
+
         const timers: NodeJS.Timeout[] = [];
 
         // Secuencia de animación
@@ -20,28 +90,28 @@ const PlantGrowthAnimation: React.FC<PlantGrowthAnimationProps> = ({ onAnimation
         timers.push(setTimeout(() => setStage(4), 4000));  // Bud appears
         timers.push(setTimeout(() => setStage(5), 5000));  // Flower blooms
         timers.push(setTimeout(() => setStage(6), 6500));  // Animation complete
-        timers.push(setTimeout(() => onAnimationComplete(), 7500)); // Notify completion
+        timers.push(setTimeout(finishAnimation, 7500)); // Notify completion
 
         return () => {
             timers.forEach(timer => clearTimeout(timer));
         };
-    }, [onAnimationComplete]);
+    }, [finishAnimation]);
 
     return (
         <div className="fixed inset-0 z-10 flex items-center justify-center bg-gradient-to-b from-indigo-900 via-purple-900 to-black">
             {/* Starry night background */}
             <div className="absolute inset-0">
-                {[...Array(50)].map((_, i) => (
+                {stars.map((star) => (
                     <div
-                        key={i}
+                        key={star.id}
                         className="absolute bg-white rounded-full animate-pulse"
                         style={{
-                            left: `${Math.random() * 100}%`,
-                            top: `${Math.random() * 100}%`,
-                            width: `${Math.random() * 3 + 1}px`,
-                            height: `${Math.random() * 3 + 1}px`,
-                            animationDelay: `${Math.random() * 3}s`,
-                            animationDuration: `${Math.random() * 2 + 1}s`
+                            left: `${star.left}%`,
+                            top: `${star.top}%`,
+                            width: `${star.width}px`,
+                            height: `${star.height}px`,
+                            animationDelay: `${star.delay}s`,
+                            animationDuration: `${star.duration}s`
                         }}
                     />
                 ))}
@@ -54,7 +124,7 @@ const PlantGrowthAnimation: React.FC<PlantGrowthAnimationProps> = ({ onAnimation
             </div>
 
             {/* Plant growth container */}
-            <div className="relative w-96 h-96 flex items-end justify-center">
+            <div className="relative h-[min(24rem,calc(100vh-8rem))] w-[min(24rem,calc(100vw-2rem))] flex items-end justify-center">
 
                 {/* Soil */}
                 <div className="absolute bottom-0 w-full h-16 bg-gradient-to-t from-amber-900 to-amber-800 rounded-lg"></div>
@@ -126,15 +196,15 @@ const PlantGrowthAnimation: React.FC<PlantGrowthAnimationProps> = ({ onAnimation
                         {/* Magical sparkles around flower */}
                         {stage === 6 && (
                             <div className="absolute inset-0">
-                                {[...Array(12)].map((_, i) => (
+                                {sparkles.map((sparkle) => (
                                     <div
-                                        key={`sparkle-${i}`}
+                                        key={sparkle.id}
                                         className="absolute w-2 h-2 bg-yellow-400 rounded-full animate-ping"
                                         style={{
-                                            left: `${Math.random() * 100}%`,
-                                            top: `${Math.random() * 100}%`,
-                                            animationDelay: `${Math.random() * 2}s`,
-                                            animationDuration: `${Math.random() * 1 + 0.5}s`
+                                            left: `${sparkle.left}%`,
+                                            top: `${sparkle.top}%`,
+                                            animationDelay: `${sparkle.delay}s`,
+                                            animationDuration: `${sparkle.duration}s`
                                         }}
                                     />
                                 ))}
@@ -144,72 +214,13 @@ const PlantGrowthAnimation: React.FC<PlantGrowthAnimationProps> = ({ onAnimation
                 )}
             </div>
 
-            {/* Title appears at the end */}
-
-
-            {/* Custom animations */}
-            <style jsx>{`
-        @keyframes grow-up {
-          from { height: 0; opacity: 0; }
-          to { height: 32px; opacity: 1; }
-        }
-        
-        @keyframes grow-stem {
-          from { height: 32px; }
-          to { height: 120px; }
-        }
-        
-        @keyframes grow-leaf {
-          from { scale: 0; opacity: 0; }
-          to { scale: 1; opacity: 1; }
-        }
-        
-        @keyframes grow-leaf-delayed {
-          from { scale: 0; opacity: 0; }
-          to { scale: 1; opacity: 1; }
-        }
-        
-        @keyframes grow-leaf-small {
-          from { scale: 0; opacity: 0; }
-          to { scale: 1; opacity: 1; }
-        }
-        
-        @keyframes grow-leaf-small-delayed {
-          from { scale: 0; opacity: 0; }
-          to { scale: 1; opacity: 1; }
-        }
-        
-        @keyframes grow-bud {
-          from { scale: 0; opacity: 0; }
-          to { scale: 1; opacity: 1; }
-        }
-        
-        @keyframes bloom {
-          from { scale: 0; opacity: 0; }
-          to { scale: 1; opacity: 1; }
-        }
-        
-        @keyframes petal-bloom {
-          from { scale: 0; opacity: 0; }
-          to { scale: 1; opacity: 1; }
-        }
-        
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .animate-grow-up { animation: grow-up 1s ease-out; }
-        .animate-grow-stem { animation: grow-stem 1s ease-out; }
-        .animate-grow-leaf { animation: grow-leaf 0.8s ease-out; }
-        .animate-grow-leaf-delayed { animation: grow-leaf 0.8s ease-out 0.2s both; }
-        .animate-grow-leaf-small { animation: grow-leaf-small 0.8s ease-out 0.4s both; }
-        .animate-grow-leaf-small-delayed { animation: grow-leaf-small-delayed 0.8s ease-out 0.6s both; }
-        .animate-grow-bud { animation: grow-bud 1s ease-out; }
-        .animate-bloom { animation: bloom 1.5s ease-out; }
-        .animate-petal-bloom { animation: petal-bloom 0.8s ease-out both; }
-        .animate-fade-in { animation: fade-in 1s ease-out; }
-      `}</style>
+            <button
+                type="button"
+                onClick={finishAnimation}
+                className="absolute bottom-6 right-6 z-20 rounded-full border border-white/60 bg-black/35 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-black/55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-300"
+            >
+                Saltar animación
+            </button>
         </div>
     );
 };
