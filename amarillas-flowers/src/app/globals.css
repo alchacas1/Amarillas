@@ -56,6 +56,53 @@ body {
 .animate-grow-bud { animation: grow-scale 1s ease-out; }
 .animate-float { animation: float 4s ease-in-out infinite; }
 
+/* Señal sutil de que los mensajes de la secuencia son interactivos */
+.click-cue {
+  isolation: isolate;
+  overflow: hidden;
+  animation: click-cue-breathe 2.4s ease-in-out infinite;
+  will-change: scale, box-shadow;
+}
+
+.click-cue::after {
+  content: "";
+  position: absolute;
+  inset: -45% auto -45% -35%;
+  z-index: 0;
+  width: 28%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.5), transparent);
+  transform: skewX(-18deg) translateX(-180%);
+  animation: click-cue-shine 2.4s ease-in-out infinite;
+}
+
+.click-cue__label {
+  position: relative;
+  z-index: 1;
+}
+
+.click-cue:active {
+  animation: none;
+  scale: 0.97;
+}
+
+@keyframes click-cue-breathe {
+  0%, 100% {
+    scale: 1;
+    box-shadow: 0 10px 22px rgb(113 63 18 / 0.24), 0 0 0 0 rgb(250 204 21 / 0);
+  }
+  50% {
+    scale: 1.04;
+    box-shadow: 0 13px 28px rgb(113 63 18 / 0.3), 0 0 0 0.32rem rgb(250 204 21 / 0.18);
+  }
+}
+
+@keyframes click-cue-shine {
+  0%, 28% { transform: skewX(-18deg) translateX(-180%); opacity: 0; }
+  42% { opacity: 0.75; }
+  58%, 100% { transform: skewX(-18deg) translateX(620%); opacity: 0; }
+}
+
 /* Apertura orgánica de la flor inicial */
 .natural-flower {
   position: absolute;
@@ -275,5 +322,10 @@ body {
 
   .petal-fall {
     display: none;
+  }
+
+  .click-cue,
+  .click-cue::after {
+    animation: none;
   }
 }

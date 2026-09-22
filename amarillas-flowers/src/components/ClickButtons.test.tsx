@@ -55,4 +55,18 @@ describe("ClickButtons", () => {
 
     expect(onMusicStart).toHaveBeenCalledTimes(1);
   });
+
+  it("marks the active prompt with a subtle click cue", () => {
+    render(
+      <ClickButtons
+        onButtonClick={() => undefined}
+        onMusicStart={() => undefined}
+      />,
+    );
+    act(() => vi.advanceTimersByTime(1000));
+
+    const activePrompt = screen.getByRole("button", { name: "hola" });
+    expect(activePrompt).toHaveClass("click-cue");
+    expect(activePrompt).toHaveAccessibleDescription("Toca para continuar");
+  });
 });

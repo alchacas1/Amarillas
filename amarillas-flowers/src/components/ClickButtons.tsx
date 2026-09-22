@@ -170,24 +170,29 @@ const ClickButtons: React.FC<ClickButtonsProps> = ({ onButtonClick, onMusicStart
         <div className="fixed inset-0 pointer-events-none z-40">
             {/* Botón de la secuencia */}
             {showButton && currentButtonIndex < buttonTexts.length && (
-                <button
-                    className="absolute pointer-events-auto
-                     px-6 py-3 bg-yellow-400 hover:bg-yellow-500 
-                     text-yellow-900 font-bold text-lg rounded-full 
-                     shadow-xl hover:shadow-2xl transition-all duration-300
-                     border-4 border-yellow-600 hover:border-yellow-700
-                     animate-pulse hover:animate-none hover:scale-110
-                     whitespace-normal text-center"
-                    style={{
-                        left: `clamp(7.5rem, ${buttonPosition.x}%, calc(100% - 7.5rem))`,
-                        top: `${buttonPosition.y}%`,
-                        transform: 'translate(-50%, -50%)',
-                        maxWidth: 'calc(100vw - 2rem)',
-                    }}
-                    onClick={handleButtonClick}
-                >
-                    {buttonTexts[currentButtonIndex]}
-                </button>
+                <>
+                    <button
+                        aria-describedby={`click-cue-hint-${currentButtonIndex}`}
+                        className="click-cue absolute pointer-events-auto
+                         px-6 py-3 bg-yellow-400 hover:bg-yellow-500
+                         text-yellow-900 font-bold text-lg rounded-full
+                         transition-colors duration-300
+                         border-4 border-yellow-600 hover:border-yellow-700
+                         whitespace-normal text-center"
+                        style={{
+                            left: `clamp(7.5rem, ${buttonPosition.x}%, calc(100% - 7.5rem))`,
+                            top: `${buttonPosition.y}%`,
+                            transform: 'translate(-50%, -50%)',
+                            maxWidth: 'calc(100vw - 2rem)',
+                        }}
+                        onClick={handleButtonClick}
+                    >
+                        <span className="click-cue__label">{buttonTexts[currentButtonIndex]}</span>
+                    </button>
+                    <span id={`click-cue-hint-${currentButtonIndex}`} className="sr-only">
+                        Toca para continuar
+                    </span>
+                </>
             )}
 
             {/* Partículas de flores */}
